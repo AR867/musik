@@ -1,0 +1,176 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Core primitives
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isBoundedStringList(arr, maxLen) {
+      return arr is list && arr.size() <= maxLen && (arr.size() == 0 || (arr[0] is string && arr[0].size() <= 128));
+    }
+
+    // 1. UserProfile validation helper
+    function isValidUserProfile(data, userId) {
+      return data.userId is string && data.userId == request.auth.uid && data.userId == userId &&
+             data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 80 &&
+             data.email is string && data.email.size() >= 3 && data.email.size() <= 150 &&
+             (!('avatarUrl' in data) || data.avatarUrl == null || (data.avatarUrl is string && data.avatarUrl.size() <= 500)) &&
+             data.subscriptionTier is string && (data.subscriptionTier == 'FREE' || data.subscriptionTier == 'PREMIUM') &&
+             isBoundedStringList(data.preferredGenres, 20) &&
+             isBoundedStringList(data.excludedArtists, 50) &&
+             data.waveDiversity is int && data.waveDiversity >= 0 && data.waveDiversity <= 100 &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    // 2. UserPlaylist validation helper
+    function isValidUserPlaylist(data, userId) {
+      return data.userId is string && data.userId == request.auth.uid && data.userId == userId &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 100 &&
+             data.description is string && data.description.size() <= 300 &&
+             isBoundedStringList(data.trackIds, 200) &&
+             data.coverTintHex is string && data.coverTintHex.size() >= 4 && data.coverTintHex.size() <= 12 &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    // 3. TrackInteraction validation helper
+    function isValidTrackInteraction(data, userId) {
+      return data.userId is string && data.userId == request.auth.uid && data.userId == userId &&
+             data.trackId is string && data.trackId.size() >= 1 && data.trackId.size() <= 128 &&
+             data.trackTitle is string && data.trackTitle.size() >= 1 && data.trackTitle.size() <= 150 &&
+             data.artistName is string && data.artistName.size() >= 1 && data.artistName.size() <= 150 &&
+             data.genre is string && data.genre.size() >= 1 && data.genre.size() <= 60 &&
+             data.liked is bool &&
+             data.disliked is bool &&
+             data.playCount is int && data.playCount >= 0 && data.playCount <= 1000000 &&
+             data.skipCount is int && data.skipCount >= 0 && data.skipCount <= 1000000 &&
+             data.totalListenMs is int && data.totalListenMs >= 0 && data.totalListenMs <= 100000000000 &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    // /users/{userId}
+    match /users/{userId} {
+      allow get: if isOwner(userId) && isValidId(userId);
+      allow list: if isOwner(userId) && existing().userId == request.auth.uid;
+
+      allow create: if isOwner(userId) &&
+                       isValidId(userId) &&
+                       incoming().keys().hasAll([
+                         'userId', 'displayName', 'email', 'subscriptionTier',
+                         'preferredGenres', 'excludedArtists', 'waveDiversity',
+                         'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'userId', 'displayName', 'email', 'avatarUrl', 'subscriptionTier',
+                         'preferredGenres', 'excludedArtists', 'waveDiversity',
+                         'createdAt', 'updatedAt'
+                       ]) &&
+                       isValidUserProfile(incoming(), userId);
+
+      allow update: if isOwner(userId) &&
+                       isValidId(userId) &&
+                       isValidUserProfile(incoming(), userId) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly([
+                         'displayName', 'email', 'avatarUrl', 'subscriptionTier',
+                         'preferredGenres', 'excludedArtists', 'waveDiversity',
+                         'updatedAt'
+                       ]);
+
+      allow delete: if isOwner(userId) && isValidId(userId);
+
+      // /users/{userId}/playlists/{playlistId}
+      match /playlists/{playlistId} {
+        allow get: if isOwner(userId) && isValidId(userId) && isValidId(playlistId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(userId) &&
+                         isValidId(playlistId) &&
+                         incoming().keys().hasAll([
+                           'userId', 'title', 'description', 'trackIds',
+                           'coverTintHex', 'createdAt', 'updatedAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'userId', 'title', 'description', 'trackIds',
+                           'coverTintHex', 'createdAt', 'updatedAt'
+                         ]) &&
+                         isValidUserPlaylist(incoming(), userId);
+
+        allow update: if isOwner(userId) &&
+                         isValidId(userId) &&
+                         isValidId(playlistId) &&
+                         isValidUserPlaylist(incoming(), userId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly([
+                           'title', 'description', 'trackIds', 'coverTintHex', 'updatedAt'
+                         ]);
+
+        allow delete: if isOwner(userId) && isValidId(userId) && isValidId(playlistId);
+      }
+
+      // /users/{userId}/interactions/{interactionId}
+      match /interactions/{interactionId} {
+        allow get: if isOwner(userId) && isValidId(userId) && isValidId(interactionId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(userId) &&
+                         isValidId(interactionId) &&
+                         incoming().keys().hasAll([
+                           'userId', 'trackId', 'trackTitle', 'artistName', 'genre',
+                           'liked', 'disliked', 'playCount', 'skipCount', 'totalListenMs',
+                           'createdAt', 'updatedAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'userId', 'trackId', 'trackTitle', 'artistName', 'genre',
+                           'liked', 'disliked', 'playCount', 'skipCount', 'totalListenMs',
+                           'createdAt', 'updatedAt'
+                         ]) &&
+                         isValidTrackInteraction(incoming(), userId);
+
+        allow update: if isOwner(userId) &&
+                         isValidId(userId) &&
+                         isValidId(interactionId) &&
+                         isValidTrackInteraction(incoming(), userId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().trackId == existing().trackId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly([
+                           'trackTitle', 'artistName', 'genre', 'liked', 'disliked',
+                           'playCount', 'skipCount', 'totalListenMs', 'updatedAt'
+                         ]);
+
+        allow delete: if isOwner(userId) && isValidId(userId) && isValidId(interactionId);
+      }
+    }
+  }
+}

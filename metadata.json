@@ -1,0 +1,6 @@
+{
+  "name": "Music Form",
+  "description": "Полноценный музыкальный стриминговый сервис с персональным радио «Моя волна», медиатекой и ИИ-рекомендациями Music Form AI.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

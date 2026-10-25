@@ -1,0 +1,196 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Authenticated Music Form user profile, preferences, and subscription tier.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Owner Firebase Auth UID."
+        },
+        "displayName": {
+          "type": "string",
+          "description": "User display name."
+        },
+        "email": {
+          "type": "string",
+          "description": "User email address."
+        },
+        "avatarUrl": {
+          "type": "string",
+          "description": "Optional avatar URL."
+        },
+        "subscriptionTier": {
+          "type": "string",
+          "enum": ["FREE", "PREMIUM"],
+          "description": "Current subscription plan."
+        },
+        "preferredGenres": {
+          "type": "array",
+          "description": "List of preferred music genres (max 20)."
+        },
+        "excludedArtists": {
+          "type": "array",
+          "description": "List of artist IDs or names excluded from My Wave (max 50)."
+        },
+        "waveDiversity": {
+          "type": "integer",
+          "description": "Recommendation diversity setting from 0 to 100."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of creation (FieldValue.serverTimestamp())."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of last update (FieldValue.serverTimestamp())."
+        }
+      },
+      "required": [
+        "userId",
+        "displayName",
+        "email",
+        "subscriptionTier",
+        "preferredGenres",
+        "excludedArtists",
+        "waveDiversity",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "UserPlaylist": {
+      "title": "UserPlaylist",
+      "description": "User-created music playlist synced across devices.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Owner Firebase Auth UID."
+        },
+        "title": {
+          "type": "string",
+          "description": "Playlist title."
+        },
+        "description": {
+          "type": "string",
+          "description": "Playlist description."
+        },
+        "trackIds": {
+          "type": "array",
+          "description": "Ordered list of track IDs in the playlist (max 200)."
+        },
+        "coverTintHex": {
+          "type": "string",
+          "description": "Hex color code for playlist cover gradient."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of creation (FieldValue.serverTimestamp())."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of last update (FieldValue.serverTimestamp())."
+        }
+      },
+      "required": [
+        "userId",
+        "title",
+        "description",
+        "trackIds",
+        "coverTintHex",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "TrackInteraction": {
+      "title": "TrackInteraction",
+      "description": "User interaction metrics for a track (likes, dislikes, skips, play count, listening duration).",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Owner Firebase Auth UID."
+        },
+        "trackId": {
+          "type": "string",
+          "description": "Catalog track identifier."
+        },
+        "trackTitle": {
+          "type": "string",
+          "description": "Track title for history display."
+        },
+        "artistName": {
+          "type": "string",
+          "description": "Artist name for affinity scoring."
+        },
+        "genre": {
+          "type": "string",
+          "description": "Track genre for My Wave telemetry."
+        },
+        "liked": {
+          "type": "boolean",
+          "description": "Whether the track is liked by the user."
+        },
+        "disliked": {
+          "type": "boolean",
+          "description": "Whether the track is disliked by the user."
+        },
+        "playCount": {
+          "type": "integer",
+          "description": "Number of times played."
+        },
+        "skipCount": {
+          "type": "integer",
+          "description": "Number of times skipped."
+        },
+        "totalListenMs": {
+          "type": "integer",
+          "description": "Total listening time in milliseconds."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of first interaction (FieldValue.serverTimestamp())."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of latest interaction (FieldValue.serverTimestamp())."
+        }
+      },
+      "required": [
+        "userId",
+        "trackId",
+        "trackTitle",
+        "artistName",
+        "genre",
+        "liked",
+        "disliked",
+        "playCount",
+        "skipCount",
+        "totalListenMs",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Per-user profile, preferences, and subscription state."
+    },
+    "/users/{userId}/playlists/{playlistId}": {
+      "schema": { "$ref": "#/entities/UserPlaylist" },
+      "description": "Per-user custom playlists."
+    },
+    "/users/{userId}/interactions/{interactionId}": {
+      "schema": { "$ref": "#/entities/TrackInteraction" },
+      "description": "Per-user track likes, dislikes, skips, and listening history."
+    }
+  }
+}

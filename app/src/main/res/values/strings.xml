@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">Music Form</string>
+    <string name="app_slogan">Твоя музыка. Твоя волна. Твой мир</string>
+    <string name="sign_in_google">Войти через Google</string>
+    <string name="nav_home">Главная</string>
+    <string name="nav_wave">Моя волна</string>
+    <string name="nav_search">Поиск</string>
+    <string name="nav_library">Медиатека</string>
+    <string name="nav_ai">AI Куратор</string>
+    <string name="nav_profile">Профиль</string>
+    <string name="launch_my_wave">Запустить Мою волну</string>
+    <string name="search_placeholder">Треки, исполнители, альбомы, жанры...</string>
+</resources>
